@@ -27,3 +27,4 @@ To run:
 ## Things I learned about go
 First time coding in Go, so had to learn things as I went. Still trying to wrap my head around not using objects in the way I was used to, so the design of this project isn't probably the best laid out. I attempted to use an interface was ran into issues with debugging. 
 Got myself a bit confused by marshalling/unmarshalling json, and the type checking/ conversion issue, and finally developed a love hate relationship with the compiler (python has made me lazy). Overall I the more barebones feel of golang. 
+Also yes, I did just commit to main for editing this readme. I am a security professional 😎
