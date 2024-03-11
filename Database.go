@@ -8,7 +8,13 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-type Database struct {
+type Database interface {
+	write_db(key string, data string) error
+	read_db(key string) error 
+}
+/* Returns reference to redisClient
+*/ 
+type RedisDatabase struct {
 	client *redis.Client
 }
 
@@ -18,7 +24,7 @@ param: data string of data to insert in db
 throw: error if issue marshalling json or setting data in redis
 returns: nil
 */
-func (db *Database) write_db(key string, data string) error {
+func (db *RedisDatabase) write_db(key string, data string) error {
 	// Convert the data to JSON
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -39,7 +45,7 @@ param: key string to search in db
 throws: error
 returns: string
 */
-func (db *Database) read_db(key string) (string, error) {
+func (db *RedisDatabase) read_db(key string) (string, error) {
 	// Get the stored JSON data from Redis
 	jsonData, err := db.client.Get(context.Background(), key).Result()
 	// db.client.

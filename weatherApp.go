@@ -5,10 +5,28 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/joho/godotenv"
 )
+
+/*
+param: database struct
+param: queryString
+throws: error
+returns response weather alerts
+*/
+func getWeatherAlerts(query string) (*http.Response, error) {
+	response, err := http.Get(query)
+	if err != nil {
+		return response, fmt.Errorf("error with api call %s", err)
+	}
+	defer response.Body.Close()
+	return response, err
+}
 
 /*
 param: database struct
@@ -17,11 +35,11 @@ throws: error
 returns string nil on success
 Writes to the database the alerts per region
 */
-func getAlertPerRegion(db *Database, regions []string) (string, error) {
+func getAlertPerRegion(db *RedisDatabase, regions []string) (string, error) {
 	var query = "https://api.weather.gov/alerts/active/region/"
 
 	for _, value := range regions {
-		response, err := getWeatherAlerts(db, query+value)
+		response, err := getWeatherAlerts(query + value)
 		if err != nil {
 			return response.Status, fmt.Errorf("error with api call %v", err)
 		}
@@ -40,8 +58,8 @@ param: currentTime string
 throws: error
 returns string nil on success
 */
-func AddAlert(db *Database, currentTime string) (string, error) {
-	response, alert_err := getWeatherAlerts(db, "https://api.weather.gov/alerts/active/count")
+func AddAlert(db *RedisDatabase, currentTime string) (string, error) {
+	response, alert_err := getWeatherAlerts("https://api.weather.gov/alerts/active/count")
 	bodyBytes, io_err := io.ReadAll(response.Body)
 	if alert_err != nil && io_err != nil {
 		return "", fmt.Errorf("error with api call %s", alert_err)
@@ -59,7 +77,7 @@ param: currentTime string
 throws: error
 returns string nil on success
 */
-func CheckAlerts(db *Database, currentTime string) (string, error) {
+func CheckAlerts(db *RedisDatabase, currentTime string) (string, error) {
 	resp, err := db.client.Get(context.Background(), currentTime).Result()
 	if err != nil {
 		return "", err
@@ -69,32 +87,19 @@ func CheckAlerts(db *Database, currentTime string) (string, error) {
 
 }
 
-// ids, err := redisClient.ZRange(context.Background(), "x:123", 0, -1)
-func loginDatabase(addr, password string, db_num int) *Database {
+/*
+Returns the reference to the Redis database
+*/
+func loginDatabase(addr, password string, db_num int) *RedisDatabase {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
 		DB:       db_num,
 	})
 
-	return &Database{
+	return &RedisDatabase{
 		client: rdb,
 	}
-}
-
-/*
-param: database struct
-param: queryString
-throws: error
-returns response weather alerts
-*/
-func getWeatherAlerts(db *Database, query string) (*http.Response, error) {
-	response, err := http.Get(query)
-	if err != nil {
-		return response, fmt.Errorf("error with api call %s", err)
-	}
-	defer response.Body.Close()
-	return response, err
 }
 
 // This app writes to the database every 10 minutes to store alerts
@@ -102,19 +107,32 @@ func getWeatherAlerts(db *Database, query string) (*http.Response, error) {
 // @Todo organize redis better...?
 func main() {
 	// Login to database
+	err := godotenv.Load()
+
+	if err != nil {
+		fmt.Errorf("Error loading .env file: %v", err)
+	}
+
+	// Access the loaded environment variables
+	update, _ := strconv.Atoi(os.Getenv("UPDATE"))
+	database := os.Getenv("DATABASE")
+	password := os.Getenv("PASSWORD")
+
 	fmt.Println("Running Weather App----->")
-	var update = 10 * 60
-	db := loginDatabase("localhost:6379", "", 0)
+	db := loginDatabase(database, password, 0)
 
 	// Create current time for key
 	var currentTime = time.Now().String()
 
-	// go func to run every 10 minutes
+	// for loop gets the updates, writes to db and then sleeps
 	go func() {
 		for {
 			fmt.Printf("Running Weather App: Last update %s\n", currentTime)
 			currentTime = time.Now().String()
-			AddAlert(db, currentTime)
+			_, err = AddAlert(db, currentTime)
+			if err != nil {
+				fmt.Errorf("Error adding alert to db %w", err)
+			}
 			time.Sleep(time.Duration(update) * time.Second)
 		}
 	}()

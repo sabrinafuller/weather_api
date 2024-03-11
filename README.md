@@ -5,7 +5,7 @@ Weather Datastore updates alerts every 10 minutes form national weather service 
 To run: 
 1. Clone this repo
 2. Start redis client `docker run --name redis-container -p 6379:6379 -d redis`
-3. Install`go install`
+3. Install`go install weatherApp/m/v2`
 4. Run tests `go test`
 4. `go run .`App will write to the database every 10 minutes until interrupted
 

@@ -38,11 +38,11 @@ func TestRead_db(t *testing.T) {
 	db := loginDatabase("localhost:6379", "", 0)
 	db.write_db(currentTime, "test")
 	result, err := db.read_db(currentTime)
-	if err == nil || result == currentTime {
+	if err != nil || result == currentTime {
 		t.Fail()
 	}
 }
-func TestWriteDB(t *testing.T) {
+func TestWrite_db(t *testing.T) {
 	var currentTime = time.Now().String()
 	// Would mock redis db, but not able to get it working
 	db := loginDatabase("localhost:6379", "", 0)
@@ -64,20 +64,15 @@ func TestWriteAlert(t *testing.T) {
 	}
 }
 func TestGetWeatherAlert(t *testing.T) {
-
-	db := loginDatabase("localhost:6379", "", 0)
 	query := "https://api.weather.gov/alerts/active/count"
-	result, err := getWeatherAlerts(db, query)
-	fmt.Print(result.Body)
+	result, err := getWeatherAlerts(query)
 	if result.Status != string(rune(http.StatusOK)) && err != nil {
 		t.Fail()
 	}
 }
 
 func TestGetWeatherAlertQuery(t *testing.T) {
-
-	db := loginDatabase("localhost:6379", "", 0)
-	result, alert_err := getWeatherAlerts(db, "https://api.weather.gov/alerts/active/count")
+	result, alert_err := getWeatherAlerts("https://api.weather.gov/alerts/active/count")
 	bodyBytes, io_err := io.ReadAll(result.Body)
 	fmt.Print(string(bodyBytes))
 	if bodyBytes != nil && alert_err != nil && io_err != nil {
